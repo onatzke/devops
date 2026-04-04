@@ -1,0 +1,32 @@
+# Katalog node_modules — nie kopiujemy, instalujemy w RUN npm ci
+node_modules/
+
+# Historia git — niepotrzebna w obrazie
+.git/
+.gitignore
+
+# Pliki środowiskowe — nigdy nie powinny trafić do obrazu
+.env
+.env.*
+*.env
+
+# Pliki IDE i edytorów
+.vscode/
+.idea/
+*.swp
+
+# Pliki tymczasowe i artefakty buildów
+*.log
+dist/
+build/
+coverage/
+tmp/
+
+# Dockerfile i docker-compose (nie potrzebne w kontenerze)
+backend/Dockerfile
+docker-compose*.yml
+
+# Dokumentacja
+docs/
+README.md
+

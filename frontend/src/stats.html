@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Statystyki — Product Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<nav class="nav">
+  <div class="nav-brand">⬡ PRODASH</div>
+  <ul class="nav-links">
+    <li><a href="index.html">Start</a></li>
+    <li><a href="products.html">Produkty</a></li>
+    <li><a href="stats.html" class="active">Statystyki</a></li>
+  </ul>
+</nav>
+
+<main class="stats-page">
+  <div class="page-header">
+    <h1>Statystyki systemu</h1>
+    <button id="refresh-btn" class="btn btn-ghost" onclick="loadStats()">↻ Odśwież</button>
+  </div>
+
+  <div id="error-banner" class="error-banner hidden"></div>
+
+  <div class="stats-grid" id="stats-grid">
+    <div class="loading-placeholder"><div class="spinner"></div><span>Pobieranie…</span></div>
+  </div>
+
+  <div class="cache-info" id="cache-info"></div>
+
+  <section class="raw-section">
+    <h2>Surowa odpowiedź API</h2>
+    <pre id="raw-json" class="raw-json">ładowanie…</pre>
+  </section>
+</main>
+
+<script>
+  async function loadStats() {
+    const grid = document.getElementById('stats-grid');
+    const raw = document.getElementById('raw-json');
+    const cacheInfo = document.getElementById('cache-info');
+    const errorBanner = document.getElementById('error-banner');
+    const btn = document.getElementById('refresh-btn');
+
+    btn.disabled = true;
+    btn.textContent = '↻ Pobieranie…';
+    errorBanner.classList.add('hidden');
+
+    try {
+      const res = await fetch('/api/stats');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const cacheStatus = res.headers.get('X-Cache-Status') || 'brak nagłówka';
+
+      cacheInfo.innerHTML = `
+          <span class="cache-label">X-Cache-Status:</span>
+          <span class="cache-value ${cacheStatus === 'HIT' ? 'hit' : 'miss'}">${cacheStatus}</span>
+          <span class="cache-hint">${cacheStatus === 'HIT' ? '— odpowiedź z cache Nginx (30s TTL)' : '— świeża odpowiedź z backendu'}</span>
+        `;
+
+      grid.innerHTML = `
+          <div class="stat-card accent">
+            <div class="stat-icon">◈</div>
+            <div class="stat-value">${data.totalProducts}</div>
+            <div class="stat-label">Wszystkich produktów</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">◎</div>
+            <div class="stat-value mono">${data.instanceId}</div>
+            <div class="stat-label">ID instancji backendu</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">◉</div>
+            <div class="stat-value">${data.uptime ? Math.floor(data.uptime) + 's' : '—'}</div>
+            <div class="stat-label">Uptime backendu</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-icon">⬡</div>
+            <div class="stat-value">${new Date(data.timestamp).toLocaleTimeString('pl-PL')}</div>
+            <div class="stat-label">Czas odpowiedzi</div>
+          </div>
+        `;
+
+      raw.textContent = JSON.stringify(data, null, 2);
+    } catch (e) {
+      errorBanner.textContent = `Błąd: ${e.message}`;
+      errorBanner.classList.remove('hidden');
+      grid.innerHTML = '';
+      raw.textContent = `Błąd: ${e.message}`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '↻ Odśwież';
+    }
+  }
+
+  loadStats();
+</script>
+</body>
+</html>
