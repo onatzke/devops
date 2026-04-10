@@ -7,8 +7,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
 <nav class="nav">
-  <div class="nav-brand">⬡ PRODASH</div>
+  <div class="nav-brand">Product Dashboard</div>
   <ul class="nav-links">
     <li><a href="index.html">Start</a></li>
     <li><a href="products.html">Produkty</a></li>
@@ -18,29 +19,23 @@
 
 <main class="stats-page">
   <div class="page-header">
-    <h1>Statystyki systemu</h1>
+    <h1>Statystyki</h1>
     <button id="refresh-btn" class="btn btn-ghost" onclick="loadStats()">↻ Odśwież</button>
   </div>
 
   <div id="error-banner" class="error-banner hidden"></div>
 
   <div class="stats-grid" id="stats-grid">
-    <div class="loading-placeholder"><div class="spinner"></div><span>Pobieranie…</span></div>
+    <div class="loading-placeholder">
+      <div class="spinner"></div>
+      <span>Pobieranie…</span>
+    </div>
   </div>
-
-  <div class="cache-info" id="cache-info"></div>
-
-  <section class="raw-section">
-    <h2>Surowa odpowiedź API</h2>
-    <pre id="raw-json" class="raw-json">ładowanie…</pre>
-  </section>
 </main>
 
 <script>
   async function loadStats() {
     const grid = document.getElementById('stats-grid');
-    const raw = document.getElementById('raw-json');
-    const cacheInfo = document.getElementById('cache-info');
     const errorBanner = document.getElementById('error-banner');
     const btn = document.getElementById('refresh-btn');
 
@@ -49,46 +44,50 @@
     errorBanner.classList.add('hidden');
 
     try {
-      const res = await fetch('/api/stats');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      const cacheStatus = res.headers.get('X-Cache-Status') || 'brak nagłówka';
+      const [statsRes, itemsRes] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/items'),
+      ]);
+      if (!statsRes.ok) throw new Error(`HTTP ${statsRes.status}`);
+      if (!itemsRes.ok) throw new Error(`HTTP ${itemsRes.status}`);
 
-      cacheInfo.innerHTML = `
-          <span class="cache-label">X-Cache-Status:</span>
-          <span class="cache-value ${cacheStatus === 'HIT' ? 'hit' : 'miss'}">${cacheStatus}</span>
-          <span class="cache-hint">${cacheStatus === 'HIT' ? '— odpowiedź z cache Nginx (30s TTL)' : '— świeża odpowiedź z backendu'}</span>
-        `;
+      const stats = await statsRes.json();
+      const items = await itemsRes.json();
+
+      const categories = [...new Set(items.map(p => p.category).filter(Boolean))];
+      const avgPrice = items.length
+              ? (items.reduce((s, p) => s + p.price, 0) / items.length).toFixed(2)
+              : '—';
+      const maxPrice = items.length
+              ? Math.max(...items.map(p => p.price)).toFixed(2)
+              : '—';
 
       grid.innerHTML = `
-          <div class="stat-card accent">
-            <div class="stat-icon">◈</div>
-            <div class="stat-value">${data.totalProducts}</div>
-            <div class="stat-label">Wszystkich produktów</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">◎</div>
-            <div class="stat-value mono">${data.instanceId}</div>
-            <div class="stat-label">ID instancji backendu</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">◉</div>
-            <div class="stat-value">${data.uptime ? Math.floor(data.uptime) + 's' : '—'}</div>
-            <div class="stat-label">Uptime backendu</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-icon">⬡</div>
-            <div class="stat-value">${new Date(data.timestamp).toLocaleTimeString('pl-PL')}</div>
-            <div class="stat-label">Czas odpowiedzi</div>
-          </div>
-        `;
-
-      raw.textContent = JSON.stringify(data, null, 2);
+        <div class="stat-card accent">
+          <div class="stat-value">${items.length}</div>
+          <div class="stat-label">Wszystkich produktów</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${categories.length}</div>
+          <div class="stat-label">Kategorie</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${avgPrice !== '—' ? avgPrice + ' zł' : '—'}</div>
+          <div class="stat-label">Średnia cena</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value">${maxPrice !== '—' ? maxPrice + ' zł' : '—'}</div>
+          <div class="stat-label">Najdroższy produkt</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value mono">${stats.instanceId}</div>
+          <div class="stat-label">ID instancji backendu</div>
+        </div>
+      `;
     } catch (e) {
       errorBanner.textContent = `Błąd: ${e.message}`;
       errorBanner.classList.remove('hidden');
       grid.innerHTML = '';
-      raw.textContent = `Błąd: ${e.message}`;
     } finally {
       btn.disabled = false;
       btn.textContent = '↻ Odśwież';

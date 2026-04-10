@@ -7,8 +7,9 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
 <nav class="nav">
-  <div class="nav-brand">⬡ PRODASH</div>
+  <div class="nav-brand">Product Dashboard</div>
   <ul class="nav-links">
     <li><a href="index.html">Start</a></li>
     <li><a href="products.html" class="active">Produkty</a></li>
@@ -19,22 +20,22 @@
 <div class="page-layout">
   <aside class="sidebar">
     <h2 class="sidebar-title">Dodaj produkt</h2>
-    <form id="add-form" class="product-form">
+    <div id="add-form" class="product-form">
       <div class="form-group">
         <label for="f-name">Nazwa</label>
-        <input id="f-name" type="text" placeholder="np. Laptop Pro X1" required />
+        <input id="f-name" type="text" placeholder="np. Laptop Pro X1" />
       </div>
       <div class="form-group">
         <label for="f-price">Cena (PLN)</label>
-        <input id="f-price" type="number" min="0" step="0.01" placeholder="999.00" required />
+        <input id="f-price" type="number" min="0" step="0.01" placeholder="999.00" />
       </div>
       <div class="form-group">
         <label for="f-category">Kategoria</label>
         <input id="f-category" type="text" placeholder="np. Elektronika" />
       </div>
-      <button type="submit" class="btn btn-primary full-width">Dodaj produkt</button>
+      <button id="submit-btn" class="btn btn-primary full-width">Dodaj produkt</button>
       <div id="form-msg" class="form-msg"></div>
-    </form>
+    </div>
   </aside>
 
   <main class="products-main">
@@ -67,13 +68,13 @@
     const card = document.createElement('article');
     card.className = 'product-card';
     card.innerHTML = `
-        <div class="product-meta">
-          <span class="product-id">#${p.id}</span>
-          ${p.category ? `<span class="product-cat">${p.category}</span>` : ''}
-        </div>
-        <h3 class="product-name">${p.name}</h3>
-        <div class="product-price">${Number(p.price).toFixed(2)} <span>PLN</span></div>
-      `;
+      <div class="product-meta">
+        <span class="product-id">#${p.id}</span>
+        ${p.category ? `<span class="product-cat">${p.category}</span>` : ''}
+      </div>
+      <h3 class="product-name">${p.name}</h3>
+      <div class="product-price">${Number(p.price).toFixed(2)} <span>PLN</span></div>
+    `;
     return card;
   }
 
@@ -96,17 +97,33 @@
     }
   }
 
-  document.getElementById('add-form').addEventListener('submit', async (e) => {
-    e.preventDefault();
+  document.getElementById('submit-btn').addEventListener('click', async () => {
     const msgEl = document.getElementById('form-msg');
-    const btn = e.target.querySelector('button[type=submit]');
+    const btn = document.getElementById('submit-btn');
+    const name = document.getElementById('f-name').value.trim();
+    const priceVal = document.getElementById('f-price').value;
+    const category = document.getElementById('f-category').value.trim();
+
+    if (!name) {
+      msgEl.textContent = '✗ Podaj nazwę produktu.';
+      msgEl.className = 'form-msg error';
+      return;
+    }
+    if (!priceVal || isNaN(parseFloat(priceVal))) {
+      msgEl.textContent = '✗ Podaj poprawną cenę.';
+      msgEl.className = 'form-msg error';
+      return;
+    }
+
     const body = {
-      name: document.getElementById('f-name').value.trim(),
-      price: parseFloat(document.getElementById('f-price').value),
-      category: document.getElementById('f-category').value.trim() || undefined,
+      name,
+      price: parseFloat(priceVal),
+      category: category || undefined,
     };
+
     btn.disabled = true;
     btn.textContent = 'Dodawanie…';
+
     try {
       const res = await fetch(`${API}/items`, {
         method: 'POST',
@@ -116,7 +133,9 @@
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       msgEl.textContent = '✓ Produkt dodany!';
       msgEl.className = 'form-msg success';
-      e.target.reset();
+      document.getElementById('f-name').value = '';
+      document.getElementById('f-price').value = '';
+      document.getElementById('f-category').value = '';
       await loadProducts();
     } catch (err) {
       msgEl.textContent = `✗ Błąd: ${err.message}`;

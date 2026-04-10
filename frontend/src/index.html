@@ -8,7 +8,7 @@
 </head>
 <body>
 <nav class="nav">
-    <div class="nav-brand">⬡ PRODASH</div>
+    <div class="nav-brand">PRODUCT DASHBOARD</div>
     <ul class="nav-links">
         <li><a href="index.html" class="active">Start</a></li>
         <li><a href="products.html">Produkty</a></li>
@@ -21,10 +21,6 @@
         <div class="hero-text">
             <span class="hero-label">SYSTEM ZARZĄDZANIA</span>
             <h1 class="hero-title">Product<br/><em>Dashboard</em></h1>
-            <p class="hero-desc">
-                Centralne miejsce do zarządzania katalogiem produktów,
-                monitorowania instancji backendu i podglądu statystyk systemu.
-            </p>
             <div class="hero-actions">
                 <a href="products.html" class="btn btn-primary">Przeglądaj produkty →</a>
                 <a href="stats.html" class="btn btn-ghost">Statystyki systemu</a>
@@ -36,36 +32,10 @@
                     <div class="preview-label">Produkty</div>
                     <div class="preview-number" id="hero-count">—</div>
                 </div>
-                <div class="preview-card card-b">
-                    <div class="preview-label">Backend</div>
-                    <div class="preview-badge">● aktywny</div>
-                </div>
-                <div class="preview-card card-c">
-                    <div class="preview-label">Cache Nginx</div>
-                    <div class="preview-badge">30s TTL</div>
-                </div>
             </div>
         </div>
     </div>
 </main>
-
-<section class="features">
-    <div class="feature-card">
-        <div class="feature-icon">◈</div>
-        <h3>REST API</h3>
-        <p>GET /items, POST /items, GET /stats — pełne CRUD na produktach.</p>
-    </div>
-    <div class="feature-card">
-        <div class="feature-icon">◎</div>
-        <h3>Reverse proxy</h3>
-        <p>Nginx przekazuje ruch /api/ do backendu ukrytego w sieci wewnętrznej.</p>
-    </div>
-    <div class="feature-card">
-        <div class="feature-icon">◉</div>
-        <h3>Cache 30s</h3>
-        <p>Endpoint /api/stats jest buforowany przez Nginx z nagłówkiem X-Cache-Status.</p>
-    </div>
-</section>
 
 <script>
     fetch('/api/stats')

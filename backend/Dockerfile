@@ -2,10 +2,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-COPY package*.json ./
-RUN npm ci --omit=dev
+ENV NODE_ENV=production PORT=3000
 
-COPY src/ ./src/
+ARG IMAGE_VERSION
+LABEL version=$IMAGE_VERSION
+
+COPY package*.json ./
+RUN npm ci --omit=dev && npm cache clean --force
+
+COPY . .
 
 EXPOSE 3000
 
