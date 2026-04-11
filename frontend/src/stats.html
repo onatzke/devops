@@ -54,6 +54,8 @@
       const stats = await statsRes.json();
       const items = await itemsRes.json();
 
+      const cacheStatus = statsRes.headers.get('X-Cache-Status') || 'brak';
+
       const categories = [...new Set(items.map(p => p.category).filter(Boolean))];
       const avgPrice = items.length
               ? (items.reduce((s, p) => s + p.price, 0) / items.length).toFixed(2)
@@ -83,6 +85,14 @@
           <div class="stat-value mono">${stats.instanceId}</div>
           <div class="stat-label">ID instancji backendu</div>
         </div>
+        <div class="stat-card">
+            <div class="stat-value mono ${cacheStatus === 'HIT' ? '' : ''}"
+            style="color: ${cacheStatus === 'HIT' ? '#4ade80' : '#60a5fa'}">
+            ${cacheStatus}
+            </div>
+        <div class="stat-label">X-Cache-Status</div>
+</div>
+
       `;
     } catch (e) {
       errorBanner.textContent = `Błąd: ${e.message}`;
