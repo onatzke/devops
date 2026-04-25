@@ -12,6 +12,8 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY . .
 
+RUN mkdir -p /data && chown -R node:node /data
+
 EXPOSE 3000
 
 USER node
