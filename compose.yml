@@ -1,0 +1,82 @@
+services:
+  nginx:
+    build: ./frontend
+    image: oliwiantz/product-frontend:v3
+    ports:
+      - "${APP_PORT}:80"
+    networks:
+      - front-net
+      - back-net
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    image: oliwiantz/product-backend:v3
+    networks:
+      - back-net
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - REDIS_HOST=cache
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_healthy
+    healthcheck:
+      test: [ "CMD-SHELL", "node -e \"require('http').get('http://localhost:3000/health', r => process.exit(r.statusCode === 200 ? 0 : 1))\"" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  db:
+    image: postgres:16-alpine
+    networks:
+      - back-net
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:7-alpine
+    networks:
+      - back-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  db-seed:
+    image: postgres:16-alpine
+    profiles:
+      - tools
+    networks:
+      - back-net
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    command: >
+      psql -h db -U ${POSTGRES_USER} -d ${POSTGRES_DB}
+      -c "INSERT INTO products (name, price) VALUES ('Widget', 9.99), ('Gadget', 24.99), ('Doohickey', 4.49)"
+    depends_on:
+      db:
+        condition: service_healthy
+
+networks:
+  front-net:
+  back-net:
+
+volumes:
+  pg-data:

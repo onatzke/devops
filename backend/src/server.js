@@ -1,92 +1,127 @@
 const express = require('express');
 const { randomUUID } = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const { Pool } = require('pg');
+const { createClient } = require('redis');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const INSTANCE_ID = process.env.INSTANCE_ID || randomUUID().slice(0, 8);
 const START_TIME = Date.now();
-const DATA_FILE = '/data/items.json';
 
 app.use(express.json());
 
-const DEFAULT_ITEMS = [
-    { id: 1, name: 'Laptop ThinkPad X1', price: 5499.00, category: 'Elektronika' },
-    { id: 2, name: 'Klawiatura mechaniczna', price: 349.00, category: 'Inne' },
-    { id: 3, name: 'Monitor 4K 27"', price: 1899.00, category: 'Elektronika' },
-];
-
-function loadItems() {
-    try {
-        if (fs.existsSync(DATA_FILE)) {
-            const raw = fs.readFileSync(DATA_FILE, 'utf8');
-            const parsed = JSON.parse(raw);
-            console.log(`[storage] Wczytano ${parsed.items.length} produktów z ${DATA_FILE}`);
-            return parsed;
-        }
-    } catch (e) {
-        console.error(`[storage] Błąd odczytu ${DATA_FILE}:`, e.message);
-    }
-    console.log('[storage] Brak pliku danych');
-    return { items: DEFAULT_ITEMS, nextId: 4 };
-}
-
-function saveItems() {
-    try {
-        fs.mkdirSync(path.dirname(DATA_FILE), { recursive: true });
-        fs.writeFileSync(DATA_FILE, JSON.stringify({ items, nextId }, null, 2));
-    } catch (e) {
-        console.error(`[storage] Błąd zapisu ${DATA_FILE}:`, e.message);
-    }
-}
-
-const store = loadItems();
-let items = store.items;
-let nextId = store.nextId;
-
-app.get('/items', (req, res) => {
-    res.json(items);
+// PostgreSQL
+const pool = new Pool({
+    host: process.env.POSTGRES_HOST || 'db',
+    database: process.env.POSTGRES_DB || 'products',
+    user: process.env.POSTGRES_USER || 'products',
+    password: process.env.POSTGRES_PASSWORD || 'secret123',
+    port: 5432,
 });
 
-app.post('/items', (req, res) => {
-    const { name, price, category } = req.body;
+//Redis
+const redisClient = createClient({
+    socket: { host: process.env.REDIS_HOST || 'cache', port: 6379 }
+});
 
+let cacheHits = 0;
+
+async function initDb() {
+    await pool.query(`
+        CREATE TABLE IF NOT EXISTS products (
+            id    SERIAL PRIMARY KEY,
+            name  TEXT NOT NULL,
+            price NUMERIC(10,2) NOT NULL DEFAULT 0
+        )
+    `);
+    const { rows } = await pool.query('SELECT COUNT(*) FROM products');
+    if (parseInt(rows[0].count) === 0) {
+        await pool.query(`
+            INSERT INTO products (name, price) VALUES
+            ('Laptop ThinkPad X1', 5499.00),
+            ('Klawiatura mechaniczna', 349.00),
+            ('Monitor 4K 27"', 1899.00)
+        `);
+        console.log('[db] Dodano domyślne produkty');
+    }
+    console.log('[db] Baza gotowa');
+}
+
+
+app.get('/items', async (req, res) => {
+    try {
+        const cached = await redisClient.get('items');
+        if (cached) {
+            cacheHits++;
+            console.log('[cache] HIT');
+            return res.json(JSON.parse(cached));
+        }
+        console.log('[cache] MISS — pobieram z bazy');
+        const { rows } = await pool.query('SELECT * FROM products ORDER BY id');
+        await redisClient.setEx('items', 30, JSON.stringify(rows));
+        res.json(rows);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
+});
+
+
+app.post('/items', async (req, res) => {
+    const { name, price } = req.body;
     if (!name || typeof name !== 'string' || name.trim() === '') {
         return res.status(400).json({ error: 'Pole "name" jest wymagane.' });
     }
     if (price === undefined || typeof price !== 'number' || price < 0) {
         return res.status(400).json({ error: 'Pole "price" musi być liczbą >= 0.' });
     }
-
-    const item = {
-        id: nextId++,
-        name: name.trim(),
-        price,
-        category: category?.trim() || null,
-    };
-
-    items.push(item);
-    saveItems();
-    console.log(`[POST /items] Dodano: ${JSON.stringify(item)}`);
-    res.status(201).json(item);
+    try {
+        const { rows } = await pool.query(
+            'INSERT INTO products (name, price) VALUES ($1, $2) RETURNING *',
+            [name.trim(), price]
+        );
+        await redisClient.del('items');
+        console.log('[cache] Unieważniono cache po POST');
+        res.status(201).json(rows[0]);
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ error: e.message });
+    }
 });
 
-app.get('/stats', (req, res) => {
-    const uptimeMs = Date.now() - START_TIME;
-    res.json({
-        totalProducts: items.length,
-        instanceId: INSTANCE_ID,
-        uptime: Math.floor(uptimeMs / 1000),
-        timestamp: new Date().toISOString(),
-        nodeVersion: process.version,
-    });
+// ─── GET /stats ───────────────────────────────────────────────────────────────
+app.get('/stats', async (req, res) => {
+    try {
+        const { rows } = await pool.query('SELECT COUNT(*) FROM products');
+        res.json({
+            totalProducts: parseInt(rows[0].count),
+            cacheHits,
+            instanceId: INSTANCE_ID,
+            uptime: Math.floor((Date.now() - START_TIME) / 1000),
+            timestamp: new Date().toISOString(),
+            nodeVersion: process.version,
+        });
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
 });
+
 
 app.get('/health', (req, res) => {
     res.json({ status: 'ok', instanceId: INSTANCE_ID });
 });
 
-app.listen(PORT, () => {
-    console.log(`Backend [${INSTANCE_ID}] nasłuchuje na porcie ${PORT}`);
+
+async function start() {
+    await redisClient.connect();
+    console.log('[redis] Połączono');
+    await initDb();
+    app.listen(PORT, () => {
+        console.log(`Backend [${INSTANCE_ID}] nasłuchuje na porcie ${PORT}`);
+    });
+}
+
+start().catch(err => {
+    console.error('Błąd startu:', err);
+    process.exit(1);
 });
