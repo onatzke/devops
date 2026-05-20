@@ -50,3 +50,15 @@ describe('Obliczenia na produktach', () => {
         assert.equal(max, 99);
     });
 });
+
+describe('Funkcja subtract', () => {
+    it('odejmowanie dwóch liczb', () => {
+        const subtract = (a, b) => a - b;
+        assert.equal(subtract(10, 3), 7);
+    });
+
+    it('odejmowanie z wynikiem ujemnym', () => {
+        const subtract = (a, b) => a - b;
+        assert.equal(subtract(3, 10), -7);
+    });
+});
