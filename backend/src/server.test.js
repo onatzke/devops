@@ -14,7 +14,7 @@ describe('Walidacja nazwy produktu', () => {
 
     it('poprawna nazwa przechodzi walidację', () => {
         const name = 'Laptop';
-        assert.equal(name.trim() !== '', true);
+        assert.equal(name.trim() !== '', false);
     });
 });
 
