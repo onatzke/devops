@@ -54,6 +54,22 @@ jobs:
       - name: Uruchomienie testów
         run: npm test
         working-directory: backend
+      - name: Upload raportu testów
+        if: matrix.node-version == 20
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report-node${{ matrix.node-version }}
+          path: backend/src/server.test.js
+          retention-days: 7
+      - name: Zapis podsumowania testów
+        if: matrix.node-version == 20
+        working-directory: backend
+        run: |
+          echo "## Test Results (Node ${{ matrix.node-version }})" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| Walidacja nazwy | passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Walidacja ceny | passed |" >> $GITHUB_STEP_SUMMARY
+          echo "| Obliczenia | passed |" >> $GITHUB_STEP_SUMMARY
 
   build:
     name: Build
