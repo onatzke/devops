@@ -33,16 +33,19 @@ jobs:
         working-directory: backend
 
   test:
-    name: Test
+    name: Tests (Node ${{ matrix.node-version }})
     needs: lint
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [ 18, 20, 22 ]
     steps:
       - name: Checkout repozytorium
         uses: actions/checkout@v4
-      - name: Konfiguracja Node.js
+      - name: Konfiguracja Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: ${{ matrix.node-version }}
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
       - name: Instalacja zależności
