@@ -10,7 +10,7 @@ const START_TIME = Date.now();
 const DATA_FILE = '/data/items.json';
 
 app.use(express.json());
-
+// komentarz
 const DEFAULT_ITEMS = [
     { id: 1, name: 'Laptop ThinkPad X1', price: 5499.00, category: 'Elektronika' },
     { id: 2, name: 'Klawiatura mechaniczna', price: 349.00, category: 'Inne' },

@@ -53,7 +53,7 @@ app.get('/items', async (req, res) => {
         const cached = await redisClient.get('items');
         if (cached) {
             cacheHits++;
-            console.log('[cache] HIT');
+            console.log('[cache] HIT')
             return res.json(JSON.parse(cached));
         }
         console.log('[cache] MISS — pobieram z bazy');
