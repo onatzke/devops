@@ -108,7 +108,7 @@ app.get('/stats', async (req, res) => {
 
 
 app.get('/health', (req, res) => {
-    res.json({ status: 'nie ok', instanceId: INSTANCE_ID });
+    res.json({ status: 'broken', instanceId: INSTANCE_ID });
 });
 
 
