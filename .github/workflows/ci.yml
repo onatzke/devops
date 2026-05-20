@@ -66,7 +66,7 @@ jobs:
         working-directory: backend
         run: |
           echo "## Test Results (Node ${{ matrix.node-version }})" >> $GITHUB_STEP_SUMMARY
-          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "| Test | Status |" >> $GITHUB_STEP_SUMMARY
           echo "| Walidacja nazwy | passed |" >> $GITHUB_STEP_SUMMARY
           echo "| Walidacja ceny | passed |" >> $GITHUB_STEP_SUMMARY
           echo "| Obliczenia | passed |" >> $GITHUB_STEP_SUMMARY
@@ -90,3 +90,10 @@ jobs:
       - name: Uruchomienie buildu
         run: npm run build
         working-directory: backend
+      - name: Zapis podsumowania buildu
+        run: |
+            echo "## Build Report" >> $GITHUB_STEP_SUMMARY
+            echo "| Parametr | Status |" >> $GITHUB_STEP_SUMMARY
+            echo "| Status | Success |" >> $GITHUB_STEP_SUMMARY
+            echo "| Node version | ${{ env.NODE_VERSION }} |" >> $GITHUB_STEP_SUMMARY
+            echo "| Commit | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
